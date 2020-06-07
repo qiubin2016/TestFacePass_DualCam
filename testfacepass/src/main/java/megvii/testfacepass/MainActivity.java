@@ -484,7 +484,7 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                 }
 
                 if (detectionResult == null || detectionResult.faceList.length == 0) {
-//                    Log.d(TAG, "feedFrame failed!");
+//                    Log.d("FeedFrameThread", "feedFrame failed!");
                     /* 当前帧没有检出人脸 */
                     runOnUiThread(new Runnable() {
                         @Override
@@ -494,7 +494,7 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                         }
                     });
                 } else {
-//                    Log.d(TAG, "feedFrame success!");
+                    Log.d("FeedFrameThread", "feedFrame success!");
                     /* 将识别到的人脸在预览界面中圈出，并在上方显示人脸位置及角度信息 */
                     final FacePassFace[] bufferFaceList = detectionResult.faceList;
                     runOnUiThread(new Runnable() {
@@ -506,17 +506,18 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                 }
 
                 if (detectionResult != null && detectionResult.message.length != 0) {
+                    Log.d("FeedFrameThread", "=======1");
                     try {
                         FacePassImage irImage = new FacePassImage(framePair.second.nv21Data, framePair.second.width, framePair.second.height, cameraRotation, FacePassImageType.NV21);
                         detectionResult = mFacePassHandler.IRfilter(irImage, detectionResult);
                         if (detectionResult.message.length == 0) {
-                            Log.d(TAG, "IRfilter success!");
+                            Log.d("FeedFrameThread", "IRfilter success!");
                             for (FacePassFace face : detectionResult.faceList) {
                                 mFacePassHandler.decodeResponseVirtual(face.trackId);
                                 mFacePassHandler.resetMessage(face.trackId);
                             }
                         } else {
-                            Log.d(TAG, "IRfilter failed!");
+                            Log.d("FeedFrameThread", "IRfilter failed!");
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -652,6 +653,8 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                                     showRecognizeResult(result.trackId, result.detail.searchScore, result.detail.livenessScore, !TextUtils.isEmpty(faceToken), ageGenderResult[idx].age, ageGenderResult[idx].gender);
                                 }
                             }
+                        } else {
+                            Log.d("RecognizeThread", "recognize failed!");
                         }
                     }
                 } catch (InterruptedException e) {
