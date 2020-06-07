@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/TestFacePass_DualCam.iml" filepath="$PROJECT_DIR$/TestFacePass_DualCam.iml" group="TestFacePass_DualCam" />
+      <module fileurl="file://$PROJECT_DIR$/testfacepass/testfacepass.iml" filepath="$PROJECT_DIR$/testfacepass/testfacepass.iml" group="TestFacePass_DualCam/testfacepass" />
+    </modules>
+  </component>
+</project>
