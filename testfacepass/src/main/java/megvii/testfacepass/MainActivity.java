@@ -105,10 +105,12 @@ import megvii.testfacepass.camera.CameraPreview;
 import megvii.testfacepass.camera.CameraPreviewData;
 import megvii.testfacepass.camera.ComplexFrameHelper;
 import megvii.testfacepass.network.ByteRequest;
+import megvii.testfacepass.utils.CfgApp;
 import megvii.testfacepass.utils.FileUtil;
 
 
 public class MainActivity extends Activity implements CameraManager.CameraListener, View.OnClickListener {
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     private enum FacePassSDKMode {
         MODE_ONLINE,
@@ -309,7 +311,10 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
         FacePassHandler.getAuth(authIP, apiKey, apiSecret);
         FacePassHandler.initSDK(getApplicationContext());
         Log.d("WJY", FacePassHandler.getVersion());
-
+        Log.d(TAG, "version:" + FacePassHandler.getVersion());
+        Log.d(TAG, "initSDK is available:" + FacePassHandler.isAvailable());
+        Log.d(TAG, "is Authorized:" + FacePassHandler.isAuthorized());
+        Log.d(TAG, "SDK_MODE:" + SDK_MODE);
     }
 
     private void initFaceHandler() {
@@ -343,12 +348,12 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                             config.detectRectModel = FacePassModel.initModel(getApplicationContext().getAssets(), "detector_rect.retinanet.x14.f2h.190630_int8.bin");
                             config.landmarkModel = FacePassModel.initModel(getApplicationContext().getAssets(), "lmk.rect_score.vgg.12M.20190121_81.bin");
 
-                            config.smileModel = FacePassModel.initModel(getApplicationContext().getAssets(), "attr.blur.align.gray.general.mgf29.0.1.1.181229.bin");
-                            config.ageGenderModel = FacePassModel.initModel(getApplicationContext().getAssets(), "age_gender.v2.bin");
+//                            config.smileModel = FacePassModel.initModel(getApplicationContext().getAssets(), "attr.blur.align.gray.general.mgf29.0.1.1.181229.bin");
+//                            config.ageGenderModel = FacePassModel.initModel(getApplicationContext().getAssets(), "age_gender.v2.bin");
 
                             //如果不需要表情和年龄性别功能，smileModel和ageGenderModel可以为null
-                            //config.smileModel = null;
-                            //config.ageGenderModel = null;
+                            config.smileModel = null;
+                            config.ageGenderModel = null;
 
                             config.searchThreshold = 75f;
                             //config.livenessThreshold = 70f;  //rgb liveness
@@ -397,8 +402,8 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
         initToast();
         /* 打开相机 */
         if (hasPermission()) {
-            manager.open(getWindowManager(), false, cameraWidth, cameraHeight);
-            mIRCameraManager.open(getWindowManager(), true, cameraWidth, cameraHeight);
+            manager.open(getWindowManager(), false, cameraWidth, cameraHeight);  //RGB
+            mIRCameraManager.open(getWindowManager(), true, cameraWidth, cameraHeight);  //IR
         }
         adaptFrameLayout();
         super.onResume();
@@ -479,6 +484,7 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                 }
 
                 if (detectionResult == null || detectionResult.faceList.length == 0) {
+//                    Log.d(TAG, "feedFrame failed!");
                     /* 当前帧没有检出人脸 */
                     runOnUiThread(new Runnable() {
                         @Override
@@ -488,6 +494,7 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                         }
                     });
                 } else {
+//                    Log.d(TAG, "feedFrame success!");
                     /* 将识别到的人脸在预览界面中圈出，并在上方显示人脸位置及角度信息 */
                     final FacePassFace[] bufferFaceList = detectionResult.faceList;
                     runOnUiThread(new Runnable() {
@@ -503,14 +510,19 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
                         FacePassImage irImage = new FacePassImage(framePair.second.nv21Data, framePair.second.width, framePair.second.height, cameraRotation, FacePassImageType.NV21);
                         detectionResult = mFacePassHandler.IRfilter(irImage, detectionResult);
                         if (detectionResult.message.length == 0) {
+                            Log.d(TAG, "IRfilter success!");
                             for (FacePassFace face : detectionResult.faceList) {
                                 mFacePassHandler.decodeResponseVirtual(face.trackId);
                                 mFacePassHandler.resetMessage(face.trackId);
                             }
+                        } else {
+                            Log.d(TAG, "IRfilter failed!");
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
+                } else {
+//                    Log.d(TAG, "message failed!");
                 }
                 if (SDK_MODE == FacePassSDKMode.MODE_ONLINE) {
                     /*抓拍版模式*/
@@ -759,19 +771,21 @@ public class MainActivity extends Activity implements CameraManager.CameraListen
         } else {
             cameraRotation = FacePassImageRotation.DEG270;
         }
-        Log.i(DEBUG_TAG, "cameraRation: " + cameraRotation);
-        cameraFacingFront = true;
+        Log.i(TAG, "cameraRation1: " + cameraRotation);  //90
+        cameraFacingFront = false;  //视美泰rk3288主板 front:IR, back:RGB
         SharedPreferences preferences = getSharedPreferences(SettingVar.SharedPrefrence, Context.MODE_PRIVATE);
         SettingVar.isSettingAvailable = preferences.getBoolean("isSettingAvailable", SettingVar.isSettingAvailable);
         SettingVar.isCross = preferences.getBoolean("isCross", SettingVar.isCross);
         SettingVar.faceRotation = preferences.getInt("faceRotation", SettingVar.faceRotation);
         SettingVar.cameraPreviewRotation = preferences.getInt("cameraPreviewRotation", SettingVar.cameraPreviewRotation);
         SettingVar.cameraFacingFront = preferences.getBoolean("cameraFacingFront", SettingVar.cameraFacingFront);
-        if (SettingVar.isSettingAvailable) {
-            cameraRotation = SettingVar.faceRotation;
-            cameraFacingFront = SettingVar.cameraFacingFront;
+        if (!CfgApp.isSmdt()) {  //视美泰rk3288主板
+            if (SettingVar.isSettingAvailable) {
+                cameraRotation = SettingVar.faceRotation;
+                cameraFacingFront = SettingVar.cameraFacingFront;
+            }
         }
-
+        Log.i(TAG, "cameraRation2: " + cameraRotation);  //90
 
         Log.i("orientation", String.valueOf(windowRotation));
         final int mCurrentOrientation = getResources().getConfiguration().orientation;
